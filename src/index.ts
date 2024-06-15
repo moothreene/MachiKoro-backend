@@ -1,14 +1,16 @@
 import express, { Express, Request, Response } from 'express';
-import { createServer } from 'node:http';
+import { createServer, get } from 'node:http';
+import dotenv from 'dotenv';
 import { Server } from 'socket.io';
 import mongoose from 'mongoose';
 import { UserModel } from './models/User';
 
+dotenv.config();
 const app: Express = express();
 const port = process.env.PORT || 3000;
 const server = createServer(app);
 const io = new Server(server, {
-  cors: { origin: (process.env.CORS_ORIGIN || 'http://localhost:3000') },
+  cors: { origin: process.env.CORS_ORIGIN },
   connectionStateRecovery: {},
 });
 
