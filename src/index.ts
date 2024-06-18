@@ -87,7 +87,7 @@ io.on('connection', async (socket) => {
   socket.on('nextTurn', async (amount) => {
     const userDoc = await UserModel.findOne({ socketId: socket.id });
     if (userDoc) {
-      io.to(userDoc.roomId).emit('nextTurn',amount);
+      io.to(userDoc.roomId).emit('nextTurn', amount);
     }
   });
 
