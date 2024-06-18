@@ -37,7 +37,7 @@ io.on('connection', async (socket) => {
     try {
       await UserModel.create({ socketId: socket.id, roomId: id });
     } catch (err) {
-      console.log(err);
+      socket.emit('host_error', err);
     }
     socket.emit('hosted', id);
   });
@@ -84,10 +84,10 @@ io.on('connection', async (socket) => {
     }
   });
 
-  socket.on('nextTurn', async () => {
+  socket.on('nextTurn', async (amount) => {
     const userDoc = await UserModel.findOne({ socketId: socket.id });
     if (userDoc) {
-      io.to(userDoc.roomId).emit('nextTurn');
+      io.to(userDoc.roomId).emit('nextTurn',amount);
     }
   });
 
