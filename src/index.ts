@@ -32,17 +32,14 @@ io.on('connection', async (socket) => {
     }
   });
 
-  socket.on('host', async () => {
   socket.on('host', async (gameData) => {
     const id = getRandomId();
     socket.join(id);
     try {
       await UserModel.create({ socketId: socket.id, roomId: id });
     } catch (err) {
-      socket.emit('host_error', err);
       io.to(socket.id).emit('host_error', err);
     }
-    socket.emit('hosted', id);
     try {
       await GameModel.create({ roomId: id, gameData, playerOne: socket.id });
     } catch (err) {
@@ -53,7 +50,6 @@ io.on('connection', async (socket) => {
 
   socket.on('join', async (id: string) => {
     const UserDoc = await UserModel.findOne({ roomId: id });
-    console.log(UserDoc);
     if (!UserDoc) return socket.emit('invalidRoom');
     socket.join(id);
     try {
@@ -102,17 +98,40 @@ io.on('connection', async (socket) => {
     }
   });
 
+  socket.on('updateGame', async (gameState) => {
+    const userDoc = await UserModel.findOne({ socketId: socket.id });
+    try {
+      await GameModel.updateOne(
+        { roomId: userDoc?.roomId },
+        { gameData:gameState}
+      );
+    } catch (err) {
+      console.log(err);
+    }
+  });
+
   socket.on('nextTurn', async (amount) => {
     const userDoc = await UserModel.findOne({ socketId: socket.id });
     if (userDoc) {
+      try {
+        GameModel.updateOne(
+          { roomId: userDoc?.roomId },
+          { $inc: { currentMove: amount }, $set: { stage: 0 } }
+        );
+      } catch (err) {
+        console.log(err);
+      }
       io.to(userDoc.roomId).emit('nextTurn', amount);
     }
   });
 
   socket.on('disconnect', async () => {
+    await UserModel.deleteOne({ socketId: socket.id });
+    await GameModel.updateOne({ playerOne: socket.id }, { playerOne: '' });
+    await GameModel.updateOne({ playerTwo: socket.id }, { playerTwo: '' });
     const roomMap = io.sockets.adapter.rooms;
     const arr = Array.from(roomMap.keys());
-    await UserModel.deleteMany({ roomId: { $nin: arr } });
+    await GameModel.deleteMany({ roomId: { $nin: arr } });
     console.log('a user disconnected');
   });
 });
