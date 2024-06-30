@@ -6,5 +6,3 @@ const UserSchema = new Schema({
 });
 
 export const UserModel = model('User', UserSchema, 'Users');
-
-// export default UserModel;
