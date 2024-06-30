@@ -61,7 +61,16 @@ io.on('connection', async (socket) => {
     } catch (err) {
       console.log(err);
     }
-    socket.emit('joined', id);
+    const gameDoc = await GameModel.findOne({ roomId: id });
+    const gameData = gameDoc?.gameData;
+    const player = gameDoc?.playerOne ? 2 : 1;
+    if(player === 2){
+      await GameModel.updateOne({ roomId: id }, { playerTwo: socket.id });
+    }
+    else{
+      await GameModel.updateOne({ roomId: id }, { playerOne: socket.id });
+    }
+    io.to(socket.id).emit('joined', { id, gameData, player });
     try {
       const userCount = await UserModel.countDocuments({ roomId: id });
       if (userCount === 2) {
