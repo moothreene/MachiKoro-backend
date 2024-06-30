@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import { Server } from 'socket.io';
 import mongoose from 'mongoose';
 import { UserModel } from './models/User';
+import { GameModel } from './models/Games';
 
 dotenv.config();
 const app: Express = express();
