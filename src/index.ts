@@ -33,14 +33,22 @@ io.on('connection', async (socket) => {
   });
 
   socket.on('host', async () => {
+  socket.on('host', async (gameData) => {
     const id = getRandomId();
     socket.join(id);
     try {
       await UserModel.create({ socketId: socket.id, roomId: id });
     } catch (err) {
       socket.emit('host_error', err);
+      io.to(socket.id).emit('host_error', err);
     }
     socket.emit('hosted', id);
+    try {
+      await GameModel.create({ roomId: id, gameData, playerOne: socket.id });
+    } catch (err) {
+      console.log(err);
+    }
+    io.to(socket.id).emit('hosted', id);
   });
 
   socket.on('join', async (id: string) => {
