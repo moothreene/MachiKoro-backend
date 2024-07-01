@@ -48,33 +48,30 @@ io.on('connection', async (socket) => {
     io.to(socket.id).emit('hosted', id);
   });
 
-  socket.on('join', async (id: string) => {
-    const UserDoc = await UserModel.findOne({ roomId: id });
-    if (!UserDoc) return socket.emit('invalidRoom');
-    socket.join(id);
+  socket.on('join', async (roomId: string) => {
+    const userCount = await UserModel.countDocuments({ roomId: roomId });
+    if (userCount === 0) {
+      return io.to(socket.id).emit('invalidRoom');
+    } else if (userCount > 1) {
+      return io.to(socket.id).emit('roomFull');
+    }
+
+    socket.join(roomId);
     try {
-      await UserModel.create({ socketId: socket.id, roomId: id });
+      await UserModel.create({ socketId: socket.id, roomId: roomId });
     } catch (err) {
       console.log(err);
     }
-    const gameDoc = await GameModel.findOne({ roomId: id });
+    const gameDoc = await GameModel.findOne({ roomId: roomId });
     const gameData = gameDoc?.gameData;
     const player = gameDoc?.playerOne ? 2 : 1;
-    if(player === 2){
-      await GameModel.updateOne({ roomId: id }, { playerTwo: socket.id });
+    if (player === 2) {
+      await GameModel.updateOne({ roomId: roomId }, { playerTwo: socket.id });
+    } else {
+      await GameModel.updateOne({ roomId: roomId }, { playerOne: socket.id });
     }
-    else{
-      await GameModel.updateOne({ roomId: id }, { playerOne: socket.id });
-    }
-    io.to(socket.id).emit('joined', { id, gameData, player });
-    try {
-      const userCount = await UserModel.countDocuments({ roomId: id });
-      if (userCount === 2) {
-        io.to(id).emit('startGame');
-      }
-    } catch (err) {
-      console.log(err);
-    }
+    io.to(socket.id).emit('joined', { roomId, gameData, player });
+    io.to(roomId).emit('startGame');
   });
 
   socket.on('roll', async (msg) => {
@@ -103,7 +100,7 @@ io.on('connection', async (socket) => {
     try {
       await GameModel.updateOne(
         { roomId: userDoc?.roomId },
-        { gameData:gameState}
+        { gameData: gameState }
       );
     } catch (err) {
       console.log(err);
