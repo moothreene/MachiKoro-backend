@@ -1,5 +1,5 @@
 import express, { Express, Request, Response } from 'express';
-import { createServer, get } from 'node:http';
+import { createServer } from 'node:http';
 import dotenv from 'dotenv';
 import { Server } from 'socket.io';
 import mongoose from 'mongoose';
