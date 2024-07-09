@@ -5,6 +5,9 @@ import { Server } from 'socket.io';
 import mongoose from 'mongoose';
 import { UserModel } from './models/User';
 import { GameModel } from './models/Games';
+import Mixpanel from 'mixpanel';
+
+const mixpanelInstance = Mixpanel.init('afb42e118f4421fce4bb353510ac0577');
 
 dotenv.config();
 const app: Express = express();
@@ -25,6 +28,10 @@ app.get('/', (req: Request, res: Response) => {
 
 io.on('connection', async (socket) => {
   console.log('a user connected', socket.id);
+  mixpanelInstance.people.set(socket.id, {
+    socketId: socket.id.toString(),
+    // Add anything else about the user here
+  });
   socket.on('chat message', async (msg) => {
     const userDoc = await UserModel.findOne({ socketId: socket.id });
     if (userDoc) {
@@ -35,6 +42,10 @@ io.on('connection', async (socket) => {
   socket.on('host', async (gameData) => {
     const id = getRandomId();
     socket.join(id);
+    mixpanelInstance.track('Host', {
+      distinct_id: socket.id,
+      roomId: id,
+    });
     try {
       await UserModel.create({ socketId: socket.id, roomId: id });
     } catch (err) {
@@ -57,6 +68,10 @@ io.on('connection', async (socket) => {
     }
 
     socket.join(roomId);
+    mixpanelInstance.track('Join', {
+      distinct_id: socket.id,
+      roomId: roomId,
+    });
     try {
       await UserModel.create({ socketId: socket.id, roomId: roomId });
     } catch (err) {
@@ -123,6 +138,29 @@ io.on('connection', async (socket) => {
   });
 
   socket.on('disconnect', async () => {
+    const userData = await UserModel.findOne({ socketId: socket.id });
+    if (userData) {
+      const gameData = await GameModel.findOne({ roomId: userData.roomId });
+      if (gameData) {
+        mixpanelInstance.track('Disconnect', {
+          distinct_id: socket.id,
+          roomId: userData.roomId,
+          turn: gameData.gameData.currentMove,
+          win:
+            gameData.gameData.players[1].properties.train_station === 1 &&
+            gameData.gameData.players[1].properties.radio_tower === 1 &&
+            gameData.gameData.players[1].properties.shopping_mall === 1 &&
+            gameData.gameData.players[1].properties.amusement_park === 1
+              ? 1
+              : gameData.gameData.players[2].properties.train_station === 1 &&
+                gameData.gameData.players[2].properties.radio_tower === 1 &&
+                gameData.gameData.players[2].properties.shopping_mall === 1 &&
+                gameData.gameData.players[2].properties.amusement_park === 1
+              ? 2
+              : 0,
+        });
+      }
+    }
     await UserModel.deleteOne({ socketId: socket.id });
     await GameModel.updateOne({ playerOne: socket.id }, { playerOne: '' });
     await GameModel.updateOne({ playerTwo: socket.id }, { playerTwo: '' });
