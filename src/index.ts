@@ -28,10 +28,6 @@ app.get('/', (req: Request, res: Response) => {
 
 io.on('connection', async (socket) => {
   console.log('a user connected', socket.id);
-  mixpanelInstance.people.set(socket.id, {
-    socketId: socket.id.toString(),
-    // Add anything else about the user here
-  });
   socket.on('chat message', async (msg) => {
     const userDoc = await UserModel.findOne({ socketId: socket.id });
     if (userDoc) {
@@ -42,6 +38,10 @@ io.on('connection', async (socket) => {
   socket.on('host', async (gameData) => {
     const id = getRandomId();
     socket.join(id);
+    mixpanelInstance.people.set(socket.id, {
+      socketId: socket.id.toString(),
+      // Add anything else about the user here
+    });
     mixpanelInstance.track('Host', {
       distinct_id: socket.id,
       roomId: id,
@@ -68,6 +68,11 @@ io.on('connection', async (socket) => {
     }
 
     socket.join(roomId);
+
+    mixpanelInstance.people.set(socket.id, {
+      socketId: socket.id.toString(),
+      // Add anything else about the user here
+    });
     mixpanelInstance.track('Join', {
       distinct_id: socket.id,
       roomId: roomId,
